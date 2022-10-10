@@ -19,29 +19,52 @@ app.use(async (req, res, next) => {
   if (!data) return res.send(j(1, "", "token失效"));
   next();
 });
+// 新建帖子
 app.post("/post", (req, res) => {
   const stmt = db.prepare("insert into post (content) values (?)");
-  stmt.run(req.body.content);
-  res.send(j(0, "", ""));
+  try {
+    const data = stmt.run(req.body.content);
+    data.changes ? res.send(j(0, "", "")) : res.send(j(1, "", "新建失败"));
+  } catch (err) {
+    res.send(j(1, err, "发生错误"));
+  }
 });
+// 查询帖子列表
 app.get("/post", (_, res) => {
   const stmt = db.prepare("select * from post");
   const data = stmt.all();
   res.send(j(0, data, ""));
 });
+// 登录
 app.post("/login", (req, res) => {
   const stmt = db.prepare(
     "select * from user where username = ? and password = ?"
   );
   const data = stmt.get([req.body.username, req.body.password]);
   if (!data) {
-    res.send(j(2, "", "账号或密码有误"));
+    res.send(j(1, "", "账号或密码有误"));
   } else {
     const { id, username } = data;
     const token = jwt.sign({ data: { id, username } }, KEY, {
       expiresIn: 60 * 60 * 24 * 7,
     });
     res.send(j(0, { token }, ""));
+  }
+});
+// 删除帖子
+app.delete("/post/:id", (req, res) => {
+  const stmt = db.prepare("delete from post where id = ?");
+  const data = stmt.run(req.params.id);
+  data.changes ? res.send(j(0, "", "")) : res.send(j(1, "", "删除失败"));
+});
+// 修改帖子
+app.patch("/post/:id", (req, res) => {
+  const stmt = db.prepare("update post set content = ? where id = ?");
+  try {
+    const data = stmt.run(req.body.content, req.params.id);
+    data.changes ? res.send(j(0, "", "")) : res.send(j(1, "", "修改失败"));
+  } catch (err) {
+    res.send(j(1, err, "发生错误"));
   }
 });
 app.listen(3000, () => {
