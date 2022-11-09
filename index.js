@@ -21,9 +21,10 @@ app.use(async (req, res, next) => {
 });
 // 新建帖子
 app.post("/post", (req, res) => {
-  const stmt = db.prepare("insert into post (content) values (?)");
+  const stmt = db.prepare("insert into post (title,content) values (?,?)");
   try {
-    const data = stmt.run(req.body.content);
+    const { title, content } = req.body;
+    const data = stmt.run(title, content);
     data.changes ? res.send(j(0, "", "")) : res.send(j(1, "", "新建失败"));
   } catch (err) {
     res.send(j(1, err, "发生错误"));
@@ -40,7 +41,8 @@ app.post("/login", (req, res) => {
   const stmt = db.prepare(
     "select * from user where username = ? and password = ?"
   );
-  const data = stmt.get([req.body.username, req.body.password]);
+  const { username, password } = req.body;
+  const data = stmt.get([username, password]);
   if (!data) {
     res.send(j(1, "", "账号或密码有误"));
   } else {
@@ -48,7 +50,7 @@ app.post("/login", (req, res) => {
     const token = jwt.sign({ data: { id, username } }, KEY, {
       expiresIn: 60 * 60 * 24 * 7,
     });
-    res.send(j(0, { token }, ""));
+    res.send(j(0, { token, id, username }, ""));
   }
 });
 // 删除帖子
